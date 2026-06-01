@@ -1,0 +1,258 @@
+{
+  "info": {
+    "name": "TaskFlow API v1",
+    "description": "Complete REST API collection for TaskFlow — Auth, Tasks, Users (Admin).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "task_id", "value": "" },
+    { "key": "user_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health",
+            "description": "Returns DB and Redis connectivity status."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dev@example.com\",\n  \"username\": \"devuser\",\n  \"password\": \"DevPass1\",\n  \"full_name\": \"Dev User\"\n}"
+            },
+            "description": "Creates a new USER account. Password: min 8 chars, 1 uppercase, 1 digit."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', json.access_token);",
+                  "pm.collectionVariables.set('refresh_token', json.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"DevPass1\"\n}"
+            },
+            "description": "Returns access_token (30min) and refresh_token (7 days). Token is auto-saved to collection variables."
+          }
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "description": "Exchange a valid refresh token for a new access token."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/logout",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Blacklists the current access token in Redis. Subsequent requests with this token will receive 401."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('task_id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/tasks/",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement OAuth2\",\n  \"description\": \"Add Google OAuth2 sign-in flow\",\n  \"priority\": \"high\",\n  \"status\": \"todo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tasks/?page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", ""],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "10" },
+                { "key": "status", "value": "todo", "disabled": true },
+                { "key": "priority", "value": "high", "disabled": true },
+                { "key": "search", "value": "OAuth", "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Paginated + filterable task list. Optional query params: status, priority, search."
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/tasks/{{task_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Result is cached in Redis for 2 minutes."
+          }
+        },
+        {
+          "name": "Update Task (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/tasks/{{task_id}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"priority\": \"urgent\"\n}"
+            },
+            "description": "Partial update — only provided fields are modified."
+          }
+        },
+        {
+          "name": "Delete Task (Soft)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/tasks/{{task_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Soft deletes the task (is_deleted=true). Data is retained in the database."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (Admin)",
+      "item": [
+        {
+          "name": "Update Own Profile",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/users/me",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Updated Name\"\n}"
+            }
+          }
+        },
+        {
+          "name": "[Admin] List All Users",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/users/?page=1&page_size=20",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "description": "Requires ADMIN role. Returns 403 for regular users."
+          }
+        },
+        {
+          "name": "[Admin] Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/users/{{user_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        },
+        {
+          "name": "[Admin] Update User Role",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/users/{{user_id}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\",\n  \"is_active\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "[Admin] Deactivate User",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/users/{{user_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}
