@@ -2,7 +2,7 @@
 
 A production-grade **REST API** with **JWT Authentication**, **Role-Based Access Control**, and a **Next.js frontend** dashboard.
 
-Built with: **FastAPI · Python · SQLAlchemy 2.0 · Alembic · Pydantic v2 · SlowAPI(rate limiting) · PostgreSQL (Neon) · Redis · Next.js · TypeScript · Tailwind CSS**
+Built with: **FastAPI · Python · SQLAlchemy 2.0 · Alembic · Pydantic v2 · SlowAPI(rate limiting) · PostgreSQL (Neon) · Redis · Next.js · TypeScript · Tailwind CSS · Docker + Docker Compose**
 
 ---
 
